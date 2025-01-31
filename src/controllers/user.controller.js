@@ -67,7 +67,7 @@ const generateAccessAndRefereshTokens = async(userId) =>{
     try {
         const { username, email, password } = req.body;
     
-        const user = User.findOne({
+        const user = await User.findOne({
             $or: [{ username }, { email }]
         })
     
@@ -110,4 +110,4 @@ const generateAccessAndRefereshTokens = async(userId) =>{
 
 }
 
-export {userSignup, userSignin}
+export { userSignup, userSignin }
