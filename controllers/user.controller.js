@@ -59,4 +59,4 @@ import { User } from "../models/user.model.js";
 
 }
 
-export default {userSignup, userSignin}
+export {userSignup, userSignin}
