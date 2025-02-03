@@ -1,6 +1,6 @@
 import { User } from "../models/user.model.js";
-import jwt from "jsonwebtoken";
-import mongoose from "mongoose";
+import { ApiError } from "../utils/ApiError.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
 
 const generateAccessAndRefereshTokens = async(userId) =>{
     try {
@@ -19,7 +19,7 @@ const generateAccessAndRefereshTokens = async(userId) =>{
     }
 }
 
- const userSignup = async (req, res) => {
+ const userSignup = async (req, res, next) => {
 
    try {
      const {username, email, password} = req.body;
@@ -27,7 +27,7 @@ const generateAccessAndRefereshTokens = async(userId) =>{
      if (
          [username, email, password].some((field) => field?.trim() === "")
      ) {
-         return res.status(400).json({ message: "All fields are required" })
+        throw new ApiError(400, "All fields are required")
          
      }
  
@@ -36,10 +36,10 @@ const generateAccessAndRefereshTokens = async(userId) =>{
      })
  
      if (existedUser) {
-         return res.status(409).json({message: "User with email or username already exists"})
+        throw new ApiError(409, "User with email or username already exists")
      }
  
-     const user = User.create({
+     const user = await User.create({
          username,
          email,
          password
@@ -58,27 +58,33 @@ const generateAccessAndRefereshTokens = async(userId) =>{
     )
  
    } catch (error) {
-            res.status(500).json({ message: "Server Error" });
+        console.error("Error in userSignup:", error);
    }
 }
 
- const userSignin = async (req, res) => {
+ const userSignin = async (req, res, next) => {
 
     try {
         const { username, email, password } = req.body;
+        
+        
+        if (!username && !email) {
+            throw new ApiError(400, "username or email is required")
+        }
     
         const user = await User.findOne({
             $or: [{ username }, { email }]
         })
+
     
         if(!user) {
-            res.status(400).json({ message: "Username or email doesn't exist"})
+            throw new ApiError(404, "User does not exist")
         }
     
         const isPasswordValid = await user.isPasswordCorrect(password)
     
         if (!isPasswordValid) {
-            return res.status(400).json({ message: "Invalid credentials"})
+            throw new ApiError(401, "Invalid user credentials")
             }
 
             const {accessToken, refreshToken} = await generateAccessAndRefereshTokens(user._id)
@@ -94,18 +100,16 @@ const generateAccessAndRefereshTokens = async(userId) =>{
             .status(200)
             .cookie("accessToken", accessToken, options)
             .cookie("refreshToken", refreshToken, options)
-            .json(
-                new ApiResponse(
-                    200, 
-                    {
-                        user: loggedInUser, accessToken, refreshToken
-                    },
-                    "User logged In Successfully"
-                )
-            )    
+            .json( new ApiResponse(
+                200, 
+                {
+                    user: loggedInUser, accessToken, refreshToken
+                },
+                "User logged In Successfully"
+            ))    
 
     } catch (error) {
-        res.status(500).json({ message: "Server Error" });
+        console.error("Error in userSignin:", error);
     }
 
 }
