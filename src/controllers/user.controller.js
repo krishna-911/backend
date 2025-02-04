@@ -116,29 +116,34 @@ const generateAccessAndRefereshTokens = async(userId) =>{
 
 }
 
-const logoutUser = asyncHandler(async(req, res) => {
-    await User.findByIdAndUpdate(
-        req.user._id,
-        {
-            $unset: {
-                refreshToken: 1 // this removes the field from document
+const logoutUser = async(req, res, next) => {
+    try {
+        await User.findByIdAndUpdate(
+            req.user._id,
+            {
+                $unset: {
+                    refreshToken: 1 // this removes the field from document
+                }
+            },
+            {
+                new: true
             }
-        },
-        {
-            new: true
+        )
+    
+        const options = {
+            httpOnly: true,
+            secure: true
         }
-    )
-
-    const options = {
-        httpOnly: true,
-        secure: true
+    
+        return res
+        .status(200)
+        .clearCookie("accessToken", options)
+        .clearCookie("refreshToken", options)
+        .json(new ApiResponse(200, {}, "User logged Out"))
+    } catch (error) {
+        console.error("Error in userSignout:", error);
+        next(error);
     }
-
-    return res
-    .status(200)
-    .clearCookie("accessToken", options)
-    .clearCookie("refreshToken", options)
-    .json(new ApiResponse(200, {}, "User logged Out"))
-})
+}
 
 export { userSignup, userSignin, logoutUser }
